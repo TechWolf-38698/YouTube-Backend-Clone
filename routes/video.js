@@ -8,19 +8,15 @@ const baseUrl = "http://127.0.0.1:5000";
 router.post("/video/postDetails", async (req, res) => {
   // If there are no errors, get data from the request
   const { formData, playlist } = req.body;
-  const { Title, Description, Visibility, videoURL, userId, channelName } =
+  const { _id, title, description, visibility, videoURL, userId, channelName } =
     formData;
   try {
-    user = await video.create({
-      title: Title,
-      description: Description,
-      playlist: playlist,
-      visibility: Visibility,
-      videoURL: videoURL,
-      userId: userId,
-      channelName: channelName,
-    });
-    res.send({ msg: "Video Uploaded successfully" });
+    let myVid = await video.findById(_id);
+    myVid.title = title;
+    myVid.description = description;
+    myVid.visibility = visibility;
+    myVid.save();
+    res.send({ msg: "Updated", myVid });
   } catch (err) {
     console.log(err);
     res.status(500).send("Server Error");
@@ -98,8 +94,6 @@ router.post("/video/postVideo", async (req, res) => {
 
 // http://127.0.0.1:5000/api/video/getall
 router.get("/video/getall", (req, res) => {
-  // var ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-  // console.log(ip);
   video.find({ visibility: { $ne: "private" } }, function (err, foundStats) {
     if (err) throw err;
     res.send(foundStats).status(200);
