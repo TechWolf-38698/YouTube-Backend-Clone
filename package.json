@@ -4,7 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "test": "npx nodemon"
+    "start": "npx nodemon"
   },
   "author": "Abdur_Rahman",
   "license": "ISC",
