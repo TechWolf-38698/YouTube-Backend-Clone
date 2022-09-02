@@ -8,8 +8,9 @@ const VideoSchema = new Schema({
   playlist: { type: Array, required: false },
   visibility: { type: String, required: true },
   videoURL: { type: String, required: true, unique: true },
-  userId: { type: String, required: true },
-  channelName: {type: String, required: true},
+  thumbnailUrl: { type: String, required: true },
+  userId: { type: String, required: false },
+  channelName: { type: String, required: false },
   date: { type: Date, default: Date.now },
 });
 

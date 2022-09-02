@@ -36,12 +36,13 @@ router.post(
       const hashedPassword = await bcrypt.hash(password, salt);
 
       // If the user doesn't exist, create a new user
-      user = await User.create({
+      user = new User({
         f_name: f_name,
         l_name: l_name,
         email: email,
         password: hashedPassword,
       });
+      user.save();
       console.log(user);
       // Return the user & success message
       res.send({ msg: "User created successfully", user: user });
