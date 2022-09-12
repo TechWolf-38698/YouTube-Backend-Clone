@@ -116,7 +116,9 @@ router.get("/users/finduser/byID/:id", async (req, res) => {
   const _id = req.params.id;
   try {
     // get user from the database by email
-    let user = await User.findOne({ _id });
+    let user = await User.findOne({ _id })
+      .populate("subscribers")
+      .populate("subscriptions");
     // If the user doesn't exist, return message
     if (!user) {
       return res.status(400).json({ msg: "User does not exist" });
@@ -125,11 +127,14 @@ router.get("/users/finduser/byID/:id", async (req, res) => {
         f_name: user.f_name,
         l_name: user.l_name,
         email: user.email,
+        subscriptions: user.subscriptions,
+        subscribers: user.subscribers,
         _id: user._id,
       };
       res.send({ _user });
     }
   } catch (err) {
+    console.log(err);
     res.status(500).send("Server Error");
   }
 });

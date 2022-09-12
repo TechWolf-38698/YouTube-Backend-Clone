@@ -2,6 +2,10 @@ const express = require("express");
 const video = require("../models/video");
 const router = express.Router();
 const extractFrames = require("ffmpeg-extract-frames");
+const { default: mongoose } = require("mongoose");
+const videoViews = require("../models/videoViews");
+const videoHistory = require("../models/videoHistory");
+const videoLikes = require("../models/videoLikes");
 
 const baseUrl = "http://127.0.0.1:5000";
 
@@ -65,21 +69,30 @@ router.post("/video/postVideo", async (req, res) => {
         let myPath = imgPath.split("public")[1];
 
         try {
+          // const channel = User.findById(req.body.channelId);
+          // channel
+          //   .exec()
+          //   .then((myRes) => {
+          //     console.log(myRes);
+
+          //   })
+          //   .catch((err) => {
+          //     console.log(err);
+          //     res.sendStatus(500);
+          //   });
           const myVid = new video({
             title: file.name,
             description: "",
-            playlist: "",
+            playlist: [],
             visibility: "private",
             videoURL: _path,
-            userId: req.body.userId,
-            channelName: req.body.channelName,
+            channel: mongoose.Types.ObjectId(req.body.channelId),
             thumbnailUrl: myPath,
           });
           myVid.save();
-          // Return the user & success message
           res.send({
             msg: "Video Uploaded successfully",
-            details: { myVid },
+            myVid,
           });
         } catch (err) {
           console.log(err);
@@ -93,11 +106,16 @@ router.post("/video/postVideo", async (req, res) => {
 });
 
 // http://127.0.0.1:5000/api/video/getall
-router.get("/video/getall", (req, res) => {
-  video.find({ visibility: { $ne: "private" } }, function (err, foundStats) {
-    if (err) throw err;
-    res.send(foundStats).status(200);
+router.get("/video/getall", async (req, res) => {
+  // video.find({ visibility: { $ne: "private" } }, function (err, foundStats) {
+  //   if (err) throw err;
+  //   res.send(foundStats).status(200);
+  // });
+  let videos = await video.find({ visibility: { $ne: "private" } }).populate({
+    path: "channel",
+    select: { _id: 0, password: 0, date: 0, __v: 0 },
   });
+  res.send(videos).status(200);
 });
 
 // http://127.0.0.1:5000/api/video/getbyid/:id
@@ -105,16 +123,160 @@ router.get("/video/getbyid/:id", async (req, res) => {
   const _id = req.params.id;
   try {
     // get user from the database by email
-    let Video = await video.findOne({ _id });
+    let Video = await video
+      .findOne({ _id: _id })
+      .populate({
+        path: "channel",
+        select: { password: 0 },
+        populate: { path: "subscribers" },
+      })
+      .populate({ path: "likes" });
     // If the user doesn't exist, return message
     if (!Video) {
-      return res.status(400).json({ msg: "User does not exist" });
+      return res.status(400).json({ msg: "Video not found" });
+    } else if (Video.visibility === "private") {
+      return res.status(403).json({ msg: "Video is private" });
     } else {
-      res.send({ Video });
+      let likes = Video.likes.filter((e) => e.state === "liked");
+      let disLikes = Video.likes.filter((e) => e.state === "disLiked");
+      let subs = Video.channel.subscribers;
+      res.send({ Video, disLikes, likes, subs });
     }
   } catch (err) {
-    res.status(500).send("Server Error");
+    res.status(500).send({ msg: "Server Error", err });
   }
+});
+
+router.post("/video/views/add", async (req, res) => {
+  const fPayload = {
+    video: req.body.vID,
+    channel: req.body.cID._id,
+    userIp: req.ip,
+  };
+  const payload = {
+    _id: mongoose.Types.ObjectId(),
+    video: req.body.vID,
+    channel: req.body.cID._id,
+    userIp: req.ip,
+    date: Date.now(),
+  };
+  let foundView = await videoViews.find(fPayload).exec();
+  if (foundView.length === 0) {
+    try {
+      let addView = videoViews(payload);
+      addView.save();
+      let currentVideo = await video.findById(payload.video).exec();
+      currentVideo.views.push(addView._id);
+      currentVideo.save();
+      res.sendStatus(200);
+    } catch (err) {
+      console.log(err);
+      res.status(500).send("Something went wrong");
+    }
+  } else if (foundView.length > 0) {
+    try {
+      let a = new Date(foundView[foundView.length - 1].date).getMinutes() + 10;
+      let b = new Date(foundView[foundView.length - 1].date).setMinutes(a);
+      if (b < Date.now()) {
+        let addView = videoViews(payload);
+        addView.save();
+        let currentVideo = await video.findById(payload.video).exec();
+        currentVideo.views.push(addView._id);
+        currentVideo.save();
+        res.sendStatus(200);
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send("Something went wrong");
+    }
+  } else {
+    res.status(500).send("Something went wrong");
+  }
+});
+router.get("/video/views/getCount/:vId", async (req, res) => {
+  let vId = req.params.vId;
+  let views = await videoViews
+    .find({ video: mongoose.Types.ObjectId(vId) })
+    .exec();
+  res.send({ count: views.length }).status(200);
+});
+
+router.post("/video/history/add", async (req, res) => {
+  const foundHistory = await videoHistory
+    .findOne({
+      video: req.body.vId,
+      viewer: req.body.uId,
+    })
+    .exec();
+  if (foundHistory === null || foundHistory === undefined) {
+    try {
+      let addHistory = await videoHistory({
+        video: req.body.vId,
+        viewer: req.body.uId,
+        date: Date.now(),
+      });
+      addHistory.save();
+    } catch {
+      (err) => console.log(err);
+    }
+  } else {
+    try {
+      foundHistory.date = Date.now();
+      foundHistory.save();
+    } catch {
+      (err) => console.log(err);
+    }
+  }
+  res.sendStatus(200);
+});
+
+router.post("/video/like", async (req, res) => {
+  // {
+  //   videoId: '6318650745787fc3f80546a2',
+  //   channel: '630d77a043509a3668885112',
+  //   userId: '630d77a043509a3668885112',
+  //   state: 'liked'
+  // }
+  let foundLike = await videoLikes
+    .findOne({
+      user: req.body.user,
+      video: req.body.video,
+    })
+    .exec();
+  let foundVideo = await video.findById(req.body.video).exec();
+  if (!foundLike && foundVideo) {
+    try {
+      let like = await videoLikes({
+        _id: mongoose.Types.ObjectId(),
+        user: req.body.user,
+        video: req.body.video,
+        channel: req.body.channel,
+        state: req.body.state,
+      }).save();
+      foundVideo.likes.push(like._id);
+      foundVideo.save();
+      res.send("added").status(200);
+    } catch {
+      res.send("error adding").status(500);
+    }
+  } else if (foundLike && foundVideo) {
+    try {
+      foundLike.state = req.body.state;
+      foundLike.save();
+      res.send("added").status(200);
+    } catch {
+      res.send("error adding").status(500);
+    }
+  }
+});
+
+router.get("/video/like/getcount/:vId", async (req, res) => {
+  let foundVideo = await video
+    .findById(req.params.vId)
+    .populate({ path: "likes" });
+  let likes = foundVideo.likes.filter((e) => e.state === "liked").length;
+  let disLikes = foundVideo.likes.filter((e) => e.state === "disLiked").length;
+  res.send({ likes, disLikes }).status(200);
 });
 
 module.exports = router;

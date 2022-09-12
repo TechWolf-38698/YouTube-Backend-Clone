@@ -7,6 +7,12 @@ const UserSchema = new Schema({
   l_name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  subscribers: [
+    { type: Schema.Types.ObjectId, required: true, ref: "Subscribers" },
+  ],
+  subscriptions: [
+    { type: Schema.Types.ObjectId, required: true, ref: "Subscribers" },
+  ],
   date: { type: Date, default: Date.now },
 });
 

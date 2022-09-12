@@ -5,13 +5,16 @@ const { Schema } = mongoose;
 const VideoSchema = new Schema({
   title: { type: String, required: true },
   description: { type: String, required: false },
-  playlist: { type: Array, required: false },
+  playlistIds: [
+    { type: Schema.Types.ObjectId, required: false, ref: "Playlists" },
+  ],
   visibility: { type: String, required: true },
   videoURL: { type: String, required: true, unique: true },
   thumbnailUrl: { type: String, required: true },
-  userId: { type: String, required: false },
-  channelName: { type: String, required: false },
+  channel: { type: Schema.Types.ObjectId, required: true, ref: "User" },
   date: { type: Date, default: Date.now },
+  views: [{ type: Schema.Types.ObjectId, required: false, ref: "videoViews" }],
+  likes: [{ type: Schema.Types.ObjectId, required: false, ref: "videoLikes" }],
 });
 
 const video = mongoose.model("Video", VideoSchema);
