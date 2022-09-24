@@ -216,18 +216,32 @@ router.post("/video/history/add", async (req, res) => {
         date: Date.now(),
       });
       addHistory.save();
+      res.sendStatus(200);
     } catch {
-      (err) => console.log(err);
+      (err) => res.send(err);
     }
   } else {
     try {
       foundHistory.date = Date.now();
       foundHistory.save();
+      res.sendStatus(200);
     } catch {
-      (err) => console.log(err);
+      (err) => res.send(err);
     }
   }
-  res.sendStatus(200);
+});
+
+router.get("/video/history/get/:id", async (req, res) => {
+  let uId = req.params.id;
+  let foundHistory = await videoHistory
+    .find({ viewer: uId })
+    .sort({ date: -1 })
+    .populate({ path: "video", populate: { path: "channel" } })
+    .exec();
+  // foundHistory.sort(function (a, b) {
+  //   return new Date(b.date) - new Date(a.date);
+  // });
+  res.send(foundHistory).status(200);
 });
 
 router.post("/video/like", async (req, res) => {
@@ -252,6 +266,7 @@ router.post("/video/like", async (req, res) => {
         video: req.body.video,
         channel: req.body.channel,
         state: req.body.state,
+        date: Date.now(),
       }).save();
       foundVideo.likes.push(like._id);
       foundVideo.save();
@@ -262,6 +277,7 @@ router.post("/video/like", async (req, res) => {
   } else if (foundLike && foundVideo) {
     try {
       foundLike.state = req.body.state;
+      foundLike.date = Date.now();
       foundLike.save();
       res.send("added").status(200);
     } catch {
@@ -277,6 +293,56 @@ router.get("/video/like/getcount/:vId", async (req, res) => {
   let likes = foundVideo.likes.filter((e) => e.state === "liked").length;
   let disLikes = foundVideo.likes.filter((e) => e.state === "disLiked").length;
   res.send({ likes, disLikes }).status(200);
+});
+
+router.get("/videos/getTrending", async (req, res) => {
+  let foundVideos = await video
+    .find()
+    .populate({ path: "channel", select: { password: 0, _v: 0 } })
+    .exec();
+  foundVideos
+    .sort((a, b) => (b.views.length < a.views.length ? -1 : 1))
+    .sort((a, b) => (b.likes.length < a.likes.length ? -1 : 1));
+  res.send(foundVideos.slice(0, 10)).status(200);
+});
+
+router.get("/videos/getSubscriptions/:id", async (req, res) => {
+  let id = req.params.id;
+  let foundVideos = await video
+    .find()
+    .populate({ path: "channel", populate: { path: "subscribers" } });
+  let filtered = [];
+  if (foundVideos.length > 0) {
+    for (let i = 0; i < foundVideos.length; i++) {
+      const v = foundVideos[i];
+      const c = v.channel;
+      const subs = c.subscribers;
+      if (subs.length !== 0) {
+        for (let i = 0; i < subs.length; i++) {
+          const s = subs[i].user._id;
+          if (s.toString() === id) {
+            filtered.push(v);
+          }
+        }
+      }
+    }
+  } else {
+  }
+  res.send(filtered).status(200);
+});
+router.get("/videos/getLikedVideos/:id", async (req, res) => {
+  let uId = req.params.id;
+  try {
+    let foundVideos = await videoLikes
+      .find({ user: uId, state: "liked" })
+      .populate({ path: "video", populate: { path: "channel" } });
+    // console.log(foundVideos);
+    res
+      .send({ videos: foundVideos, lastUpdated: foundVideos[0].date })
+      .status(200);
+  } catch (err) {
+    res.send(err).status(500);
+  }
 });
 
 module.exports = router;

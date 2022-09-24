@@ -8,6 +8,9 @@ const filehandler = require("./routes/filehandler");
 const fileUpload = require("express-fileupload");
 const path = require("path");
 const subscribe = require("./routes/subscribers");
+const comments = require("./routes/comments");
+const WatchLater = require("./routes/WatchLater");
+const Playlists = require("./routes/playlists");
 
 // Connect to MongoDB
 connectMongoose();
@@ -40,6 +43,9 @@ app.use("/api", auth);
 app.use("/api", video);
 app.use("/api", filehandler);
 app.use("/api", subscribe);
+app.use("/api", comments);
+app.use("/api", WatchLater);
+app.use("/api", Playlists);
 
 app.listen(port, () => {
   console.log(`http://127.0.0.1:${port}`);

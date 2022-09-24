@@ -43,7 +43,6 @@ router.post(
         password: hashedPassword,
       });
       user.save();
-      console.log(user);
       // Return the user & success message
       res.send({ msg: "User created successfully", user: user });
     } catch (err) {

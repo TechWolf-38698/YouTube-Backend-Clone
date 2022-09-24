@@ -4,6 +4,7 @@ const router = express.Router();
 const Subscribers = require("../models/Subscribers");
 const User = require("../models/user");
 
+// Subscribe
 router.post("/subs/add", async (req, res) => {
   let foundSub = await Subscribers.findOne(req.body).exec();
   let foundUser = await User.findById(req.body.user).exec();
@@ -40,6 +41,7 @@ router.post("/subs/add", async (req, res) => {
     res.sendStatus(400);
   }
 });
+// UnSubscribe
 router.post("/subs/delete", async (req, res) => {
   let foundSub = await Subscribers.findOne(req.body).exec();
   let foundUser = await User.findById(req.body.user).exec();
@@ -75,9 +77,25 @@ router.post("/subs/delete", async (req, res) => {
     res.sendStatus(400);
   }
 });
+// Get Subscribers Count
 router.get("/subs/getCount/:cId", async (req, res) => {
   let subs = await Subscribers.find({ channel: req.params.cId }).exec();
   res.send({ subs: subs.length });
 });
+// Get Subscriptions By user Id
+router.get("/subs/getSubscriptions/:id", async (req, res) => {
+  let userId = req.params.id;
+  try {
+    let subs = await Subscribers.find({ user: userId })
+      .populate({ path: "channel", populate: { path: "subscribers" } })
+      .exec();
+    res.send(subs).status(200);
+  } catch (err) {
+    console.log(err);
+    res.send(err).status(500);
+  }
+});
+
+// router.get("/")
 
 module.exports = router;
