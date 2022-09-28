@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 //Abdur_Rahman
 // arjawad123;
-const connectionString = "mongodb://localhost:27017";
+const connectionString = "mongodb://localhost:27017/test";
 // const connectionString =
 //   "mongodb+srv://Abdur_Rehman:arjawad123@yt-practice.oukvq.mongodb.net/?retryWrites=true&w=majority";
 

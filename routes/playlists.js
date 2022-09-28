@@ -41,9 +41,8 @@ router.post("/playlist/video/toggle", async (req, res) => {
     }
   }
 });
-router.post("/playlist/video/getByUserIdAndVIdeoId", async (req, res) => {
+router.post("/playlist/video/getByUserIdAndVIdeoId", async (req, res) => {  
   let payload = req.body;
-  console.log(payload);
   let foundItems = await PlaylistVideos.find(payload, {
     playlist: 1,
     _id: 0,

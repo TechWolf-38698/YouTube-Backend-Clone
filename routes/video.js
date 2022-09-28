@@ -26,7 +26,6 @@ router.post("/video/postDetails", async (req, res) => {
     res.status(500).send("Server Error");
   }
 });
-
 router.post("/video/postVideo", async (req, res) => {
   const file = req.files.video;
   let extension = file.mimetype.split("/");
@@ -104,20 +103,43 @@ router.post("/video/postVideo", async (req, res) => {
     res.status(400).send({ status: "error", message: "Invalid file type" });
   }
 });
-
 // http://127.0.0.1:5000/api/video/getall
 router.get("/video/getall", async (req, res) => {
-  // video.find({ visibility: { $ne: "private" } }, function (err, foundStats) {
-  //   if (err) throw err;
-  //   res.send(foundStats).status(200);
-  // });
-  let videos = await video.find({ visibility: { $ne: "private" } }).populate({
-    path: "channel",
-    select: { _id: 0, password: 0, date: 0, __v: 0 },
-  });
-  res.send(videos).status(200);
-});
+  const page = parseInt(req.query.page);
+  const limit = parseInt(req.query.limit);
 
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+
+  const results = {};
+  results.page = page;
+  try {
+    let videos = await video.find({ visibility: "public" }).exec();
+    results.totalVideos = videos.length;
+    if (endIndex < videos.length) {
+      results.hasMore = true;
+    } else {
+      results.hasMore = false;
+    }
+  } catch (err) {
+    console.log(err);
+  }
+  try {
+    results.videos = await video
+      .find({ visibility: "public" })
+      .populate({
+        path: "channel",
+        select: { _id: 0, password: 0, date: 0, __v: 0 },
+      })
+      .limit(limit)
+      .skip(startIndex)
+      .exec();
+
+    res.send(results).status(200);
+  } catch (err) {
+    res.send(err).status(500);
+  }
+});
 // http://127.0.0.1:5000/api/video/getbyid/:id
 router.get("/video/getbyid/:id", async (req, res) => {
   const _id = req.params.id;
@@ -146,7 +168,6 @@ router.get("/video/getbyid/:id", async (req, res) => {
     res.status(500).send({ msg: "Server Error", err });
   }
 });
-
 router.post("/video/views/add", async (req, res) => {
   const fPayload = {
     video: req.body.vID,
@@ -200,7 +221,6 @@ router.get("/video/views/getCount/:vId", async (req, res) => {
     .exec();
   res.send({ count: views.length }).status(200);
 });
-
 router.post("/video/history/add", async (req, res) => {
   const foundHistory = await videoHistory
     .findOne({
@@ -230,7 +250,6 @@ router.post("/video/history/add", async (req, res) => {
     }
   }
 });
-
 router.get("/video/history/get/:id", async (req, res) => {
   let uId = req.params.id;
   let foundHistory = await videoHistory
@@ -243,7 +262,6 @@ router.get("/video/history/get/:id", async (req, res) => {
   // });
   res.send(foundHistory).status(200);
 });
-
 router.post("/video/like", async (req, res) => {
   // {
   //   videoId: '6318650745787fc3f80546a2',
@@ -285,7 +303,6 @@ router.post("/video/like", async (req, res) => {
     }
   }
 });
-
 router.get("/video/like/getcount/:vId", async (req, res) => {
   let foundVideo = await video
     .findById(req.params.vId)
@@ -294,7 +311,6 @@ router.get("/video/like/getcount/:vId", async (req, res) => {
   let disLikes = foundVideo.likes.filter((e) => e.state === "disLiked").length;
   res.send({ likes, disLikes }).status(200);
 });
-
 router.get("/videos/getTrending", async (req, res) => {
   let foundVideos = await video
     .find()
@@ -305,7 +321,6 @@ router.get("/videos/getTrending", async (req, res) => {
     .sort((a, b) => (b.likes.length < a.likes.length ? -1 : 1));
   res.send(foundVideos.slice(0, 10)).status(200);
 });
-
 router.get("/videos/getSubscriptions/:id", async (req, res) => {
   let id = req.params.id;
   let foundVideos = await video
