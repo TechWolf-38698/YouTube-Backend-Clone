@@ -7,8 +7,6 @@ const videoViews = require("../models/videoViews");
 const videoHistory = require("../models/videoHistory");
 const videoLikes = require("../models/videoLikes");
 
-const baseUrl = "http://127.0.0.1:5000";
-
 router.post("/video/postDetails", async (req, res) => {
   // If there are no errors, get data from the request
   const { formData, playlist } = req.body;
@@ -125,7 +123,7 @@ router.get("/video/getall", async (req, res) => {
     console.log(err);
   }
   try {
-    results.videos = await video
+    let myVs = await video
       .find({ visibility: "public" })
       .populate({
         path: "channel",
@@ -135,6 +133,7 @@ router.get("/video/getall", async (req, res) => {
       .skip(startIndex)
       .exec();
 
+    results.videos = myVs.reverse();
     res.send(results).status(200);
   } catch (err) {
     res.send(err).status(500);
@@ -349,12 +348,22 @@ router.get("/videos/getLikedVideos/:id", async (req, res) => {
   let uId = req.params.id;
   try {
     let foundVideos = await videoLikes
-      .find({ user: uId, state: "liked" })
+      .find({ user: uId })
       .populate({ path: "video", populate: { path: "channel" } });
     // console.log(foundVideos);
-    res
-      .send({ videos: foundVideos, lastUpdated: foundVideos[0].date })
-      .status(200);
+    let custom = [];
+    if (foundVideos.length !== 0) {
+      foundVideos.sort(function (a, b) {
+        return new Date(b.date) - new Date(a.date);
+      });
+      for (let i = 0; i < foundVideos.length; i++) {
+        const e = foundVideos[i];
+        if (e.state === "liked") {
+          custom.push(e);
+        }
+      }
+    }
+    res.send({ videos: custom, lastUpdated: foundVideos[0].date }).status(200);
   } catch (err) {
     res.send(err).status(500);
   }
