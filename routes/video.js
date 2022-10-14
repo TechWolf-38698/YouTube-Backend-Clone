@@ -1,11 +1,13 @@
 const express = require("express");
-const video = require("../models/video");
+// const video = require("../models/video");
 const router = express.Router();
 const extractFrames = require("ffmpeg-extract-frames");
 const { default: mongoose } = require("mongoose");
 const videoViews = require("../models/videoViews");
 const videoHistory = require("../models/videoHistory");
 const videoLikes = require("../models/videoLikes");
+const Subscribers = require("../models/Subscribers");
+const video = require("../models/video");
 
 router.post("/video/postDetails", async (req, res) => {
   // If there are no errors, get data from the request
@@ -101,7 +103,6 @@ router.post("/video/postVideo", async (req, res) => {
     res.status(400).send({ status: "error", message: "Invalid file type" });
   }
 });
-// http://127.0.0.1:5000/api/video/getall
 router.get("/video/getall", async (req, res) => {
   const page = parseInt(req.query.page);
   const limit = parseInt(req.query.limit);
@@ -139,7 +140,6 @@ router.get("/video/getall", async (req, res) => {
     res.send(err).status(500);
   }
 });
-// http://127.0.0.1:5000/api/video/getbyid/:id
 router.get("/video/getbyid/:id", async (req, res) => {
   const _id = req.params.id;
   try {
@@ -157,6 +157,8 @@ router.get("/video/getbyid/:id", async (req, res) => {
       return res.status(400).json({ msg: "Video not found" });
     } else if (Video.visibility === "private") {
       return res.status(403).json({ msg: "Video is private" });
+    } else if (Video.visibility === "deleted") {
+      return res.status(410).json({ msg: "Video has been deleted" });
     } else {
       let likes = Video.likes.filter((e) => e.state === "liked");
       let disLikes = Video.likes.filter((e) => e.state === "disLiked");
@@ -312,12 +314,12 @@ router.get("/video/like/getcount/:vId", async (req, res) => {
 });
 router.get("/videos/getTrending", async (req, res) => {
   let foundVideos = await video
-    .find()
+    .find({ visibility: "public" })
     .populate({ path: "channel", select: { password: 0, _v: 0 } })
+    // .sort({ views: -1 })
     .exec();
-  foundVideos
-    .sort((a, b) => (b.views.length < a.views.length ? -1 : 1))
-    .sort((a, b) => (b.likes.length < a.likes.length ? -1 : 1));
+  foundVideos.sort((a, b) => (b.views.length < a.views.length ? -1 : 1));
+  // .sort((a, b) => (b.likes.length < a.likes.length ? -1 : 1));
   res.send(foundVideos.slice(0, 10)).status(200);
 });
 router.get("/videos/getSubscriptions/:id", async (req, res) => {
@@ -366,6 +368,47 @@ router.get("/videos/getLikedVideos/:id", async (req, res) => {
     res.send({ videos: custom, lastUpdated: foundVideos[0].date }).status(200);
   } catch (err) {
     res.send(err).status(500);
+  }
+});
+router.get("/videos/getByChannelId", async (req, res) => {
+  const cId = req.query.id;
+  try {
+    const foundVideos = await video
+      .find({ channel: cId, visibility: "public" })
+      .populate({ path: "channel", select: { _v: 0, password: 0 } })
+      .exec();
+    res.status(200).send(foundVideos);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+router.get("/videos/getAllByChannelId", async (req, res) => {
+  const cId = req.query.id;
+  try {
+    const foundVideos = await video
+      .find({ channel: cId, visibility: { $ne: "deleted" } })
+      .populate({ path: "channel", select: { _v: 0, password: 0 } })
+      .populate({ path: "likes" })
+      .sort({ date: -1 })
+      .exec();
+    res.status(200).send(foundVideos);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+router.delete("/videos/deleteById", async (req, res) => {
+  const vId = req.query.id;
+  try {
+    const foundVideo = await video.findOne({ _id: vId }).exec();
+    if (foundVideo) {
+      foundVideo.visibility = "deleted";
+      foundVideo.save();
+      res.sendStatus(200);
+    } else {
+      res.sendStatus(404);
+    }
+  } catch (err) {
+    res.status(500).send(err);
   }
 });
 

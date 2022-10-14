@@ -11,6 +11,7 @@ const subscribe = require("./routes/subscribers");
 const comments = require("./routes/comments");
 const WatchLater = require("./routes/WatchLater");
 const Playlists = require("./routes/playlists");
+const Library = require("./routes/Library");
 
 // Connect to MongoDB
 connectMongoose();
@@ -46,6 +47,7 @@ app.use("/api", subscribe);
 app.use("/api", comments);
 app.use("/api", WatchLater);
 app.use("/api", Playlists);
+app.use("/api", Library);
 
 app.listen(port, () => {
   console.log(`http://127.0.0.1:${port}`);

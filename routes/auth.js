@@ -67,7 +67,7 @@ router.post(
     // Check if the user exists
     try {
       // get user from the database by email
-      let user = await User.findOne({ email });
+      let user = await User.findOne({ email, state: { $ne: "deleted" } });
       // If the user doesn't exist, return message
       if (!user) {
         return res.status(400).json({ msg: "User does not exist" });
@@ -99,7 +99,7 @@ router.post("/users/finduser", [body("email").isEmail()], async (req, res) => {
   // Check if the user exists
   try {
     // get user from the database by email
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email, state: { $ne: "deleted" } });
     // If the user doesn't exist, return message
     if (!user) {
       return res.status(400).json({ msg: "User does not exist" });
@@ -115,22 +115,22 @@ router.get("/users/finduser/byID/:id", async (req, res) => {
   const _id = req.params.id;
   try {
     // get user from the database by email
-    let user = await User.findOne({ _id })
+    let user = await User.findOne({ _id: _id, state: "active" })
       .populate("subscribers")
       .populate("subscriptions");
     // If the user doesn't exist, return message
     if (!user) {
       return res.status(400).json({ msg: "User does not exist" });
     } else {
-      var _user = {
-        f_name: user.f_name,
-        l_name: user.l_name,
-        email: user.email,
-        subscriptions: user.subscriptions,
-        subscribers: user.subscribers,
-        _id: user._id,
-      };
-      res.send({ _user });
+      // var _user = {
+      //   f_name: user.f_name,
+      //   l_name: user.l_name,
+      //   email: user.email,
+      //   subscriptions: user.subscriptions,
+      //   subscribers: user.subscribers,
+      //   _id: user._id,
+      // };
+      res.send({ _user: user });
     }
   } catch (err) {
     console.log(err);

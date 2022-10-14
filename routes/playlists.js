@@ -75,7 +75,7 @@ router.post("/playlist/video/getByUserIdAndVIdeoId", async (req, res) => {
   }
   res.send(custom).status(200);
 });
-// Get Playlist videos?
+// Get Playlist videos
 router.get("/playlist/videos/getByPlaylist", async (req, res) => {
   const { id } = req.query;
   try {
@@ -95,15 +95,45 @@ router.get("/playlist/videos/getByPlaylist", async (req, res) => {
       }
     }
 
-    res.status(200).send({
-      videos: custom,
-      lastUpdated: videos[0].date,
-      playlistName: videos[0].playlist.name,
-    });
+    if (videos.length !== 0) {
+      res.status(200).send({
+        videos: custom,
+        lastUpdated: videos[0].date,
+        playlistName: videos[0].playlist.name,
+      });
+    } else {
+      res.send(undefined).status(200);
+    }
   } catch (err) {
     console.log(err);
     res.status(500).send(err);
   }
+});
+
+router.get("/playlist/getByChannel", async (req, res) => {
+  const { id } = req.query;
+  const foundPlaylists = await playlists
+    .find({
+      user: id,
+      visibility: "public",
+    })
+    .exec();
+  const foundPlaylistVideos = await PlaylistVideos.find({
+    user: id,
+    state: true,
+  })
+    .populate({ path: "playlist" })
+    .exec();
+  let a = [];
+  for (let i = 0; i < foundPlaylists.length; i++) {
+    const e = foundPlaylists[i];
+    console.log(e._id);
+  }
+  for (let i = 0; i < foundPlaylistVideos.length; i++) {
+    const x = foundPlaylistVideos[i];
+    console.log(x.playlist._id);
+  }
+  res.status(200).send(foundPlaylists);
 });
 
 module.exports = router;

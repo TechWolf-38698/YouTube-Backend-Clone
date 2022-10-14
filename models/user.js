@@ -14,6 +14,7 @@ const UserSchema = new Schema({
     { type: Schema.Types.ObjectId, required: true, ref: "Subscribers" },
   ],
   date: { type: Date, default: Date.now },
+  state: { type: String, default: "active" },
 });
 
 const User = mongoose.model("User", UserSchema);
